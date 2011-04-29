@@ -27,6 +27,17 @@
 \alias{weight<-}
 \alias{weight<-,phylo4d_ext-method}
 \alias{weight<-,list-method}
+\alias{show,phylo4d_ext-method}
+\alias{coerce-methods}
+\alias{coerce,phylo,phylo4d_ext-method}
+\alias{coerce,phylo4,phylo4d_ext-method}
+\alias{coerce,phylo4d,phylo4d_ext-method}
+\alias{as}
+\alias{as-method}
+\alias{as,phylo,phylo4d_ext-method}
+\alias{as,phylo4,phylo4d_ext-method}
+\alias{as,phylo4d,phylo4d_ext-method}
+
 
 \title{Class "phylo4d_ext" }
 \description{ This class extends phylo4d in adding support for subnodes (not singletons) and tree weights.  }
