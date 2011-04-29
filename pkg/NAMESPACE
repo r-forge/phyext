@@ -1,0 +1,17 @@
+#----------------------------------------------------------------------
+
+#exportPattern("^[[:alpha:]]+")
+exportPattern("*")
+
+#----------------------------------------------------------------------
+import(methods)
+import(phylobase) # need virtually everything from this package
+#importFrom(graphics, plot)
+importFrom(ape,checkLabel)
+
+#----------------------------------------------------------------------
+# classes and constructors
+exportClasses(phylo4d_ext)
+exportMethods(phyext)
+
+
