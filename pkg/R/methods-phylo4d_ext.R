@@ -770,6 +770,10 @@ read.nexus.simmap <- function(finput="",text=NULL,vers=NULL,...)
 		}
 	}
 	
+	# Find and read data:
+	data.part = read.characters2(txt=rawtext,blockname="characters")
+	
+	
 	return(outtrees)
 }
 

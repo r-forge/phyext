@@ -214,13 +214,19 @@ has.characters2 <- function(finput,txt=NULL)
 # Also works as a work around to readNexus' annoying habit
 # or crashing when using type="data" but where trees block
 # contains simmap formatted trees
-read.characters2 <- function(finput,blockname="characters2")
+read.characters2 <- function(finput,txt=NULL,blockname="characters2")
 {
-	
-	if(!file.exists(finput))
-			stop("Assuming finput is a file and could not find it")
-	
-	rawtext = scan(finput,what=character(0),strip.white=T,sep="\n")		
+	rawtext = NULL
+	if(!is.null(txt))
+	{
+		rawtext = txt
+	} else {
+			if(!file.exists(finput)){
+				stop("Assuming finput is a file and could not find it")
+			} else {
+				rawtext = scan(finput,what=character(0),strip.white=T,sep="\n")						
+			}
+	} 
 	
 	tmpfile = tempfile()
 	tmphead = "#NEXUS\n"
