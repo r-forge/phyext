@@ -655,8 +655,22 @@ read.simmap.new <- function(file="",text=NULL, specialpatt=character(0))
 # nexus files where trees have simmap formatting.  If they don't, then
 # readNexus should be used instead.
 #
-read.nexus.simmap <- function(finput="",text=NULL,vers=NULL,...)
+# note: if type=="all", data is read in from the "characters" block
+#						and it's rownames are assumed to match the taxa names.
+#
+read.nexus.simmap <- function(finput="",text=NULL,vers=NULL,type=c("all", "tree"),...)
 {
+	
+	type <- match.arg(type)
+
+	if (type == "all") {
+		returnData <- TRUE
+	}
+	else {
+		returnData <- FALSE
+	}
+
+
 	outtrees = NULL
 	if(!is.null(text)){
 		# TODO: check text for newlines and split on them if they exist.
@@ -770,8 +784,18 @@ read.nexus.simmap <- function(finput="",text=NULL,vers=NULL,...)
 		}
 	}
 	
-	# Find and read data:
-	data.part = read.characters2(txt=rawtext,blockname="characters")
+	# Find and add data:
+	if(returnData && has.block(txt=rawtext,block="characters"))
+	{
+		data.part = read.characters2(txt=rawtext,blockname="characters")
+		if(length(data.part) > 0)
+		{
+			for(treeind in seq(length(outtrees)))
+			{
+				outtrees[[treeind]] <- addData(outtrees[[treeind]],tip.data=data.part,rownamesAsLabels=TRUE)
+			}
+		}
+	}
 	
 	
 	return(outtrees)
@@ -1378,8 +1402,15 @@ write.simmap.new <- function(x,usestate=NULL,file="",...)
 # @param vers which SIMMAP version should be used (can be vers=c(1.1, 1.0, 1.5))
 # @param usestates if NULL, then all data columns are used
 #
-write.nexus.simmap <- function(obj, file = "", translate = TRUE, ...)
+write.nexus.simmap <- function(obj, file = "", translate = TRUE, dtype=c(noneData(),contData(),discData()), ...)
 {
+
+	dtype = match.arg(dtype)
+	dat = NULL
+	if(hasData(obj[[1]]))
+		dat = tdata(obj[[1]],"tip")
+
+	
 	if(!is.list(obj))
 	{
 		if(!is(obj,"phylo4d_ext"))
@@ -1451,6 +1482,37 @@ write.nexus.simmap <- function(obj, file = "", translate = TRUE, ...)
         cat(write.simmap(obj[[i]], file="",...),"\n", sep = "", file = file, append = TRUE)
     }
     cat("END;\n", file = file, append = TRUE)
+
+	
+	# write data too:
+	if( dtype != noneData() && !is.null(dat) )
+	{
+		datnames = colnames(dat)
+
+		treeargs <- list(...)
+		if( "usestate" %in% names(treeargs) ){
+			
+			exclude = integer(0)
+			if(!is.character(treeargs$usestate)) {
+				exclude = as.integer(treeargs$usestate)
+			} else {
+				exclude = which(datnames == treeargs$usestate)
+			}
+			
+			if(length(exclude) > 0)
+				dat = dat[,-exclude,drop=FALSE]
+		}
+		
+		dat = dat[,which(guess.datatype(dat) == dtype),drop=FALSE]
+		
+		if(ncol(dat) != 0)
+		{
+			cat( write.characters2(dat,dtype=dtype), sep = "\n", file= file, append=TRUE)
+		} else {
+			warning("Could not find any suitable data to write.")
+		}
+	}
+	
 }
 
 

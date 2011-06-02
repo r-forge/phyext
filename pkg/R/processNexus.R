@@ -239,5 +239,144 @@ read.characters2 <- function(finput,txt=NULL,blockname="characters2")
 	return(data2.part)
 }
 
+# data information:
+noneData <- function() { return("none") }
+discData <- function() { return("discrete") }
+contData <- function() { return("cont") }
 
+guess.datatype <- function(datvals)
+{
+	if(is.null(dim(datvals)))
+		return(character(0))
+	
+	ndatcols = ncol(datvals)
+	datatypes = rep("",ndatcols)
+	
+	if(ndatcols > 0)
+	{
+		datatypes[sapply(seq(ndatcols),function(i) is.factor(datvals[,i]))] = discData()
+		datatypes[sapply(seq(ndatcols),function(i) is.numeric(datvals[,i]))] = contData()
+	}
+	
+	return(datatypes)
+}
+
+
+write.characters2 <- function(xdf,blockname="CHARACTERS",dtype=c(contData(),discData()),missing.char="?")
+{	
+	
+	dtype = match.arg(dtype)
+	# set up state labels:
+	use.state.labels=F
+	state.labels=character(0)
+	
+	# For disc data, figure out what the symbols should be 
+	discover.symbols<-function(dat,zero.based=T)
+	{			
+		syms = integer(0)
+		if(ncol(dat)!=0){
+			for(ii in seq(ncol(dat)))
+			{
+				syms = c(syms,unique((as.integer(dat[,ii]))))
+			}
+		}
+		syms = sort(unique(syms))
+		
+		# assume that syms are in order
+		if(zero.based)
+		{
+			if(syms[1] != 0){
+				offs = -syms[1]
+				syms = syms + offs
+			}
+		}
+		
+		return(syms)
+	}
+	
+	# convert factors to zero-based ints
+	# CAUTION: this function might not work in next NCL version
+	convert.to.int <- function(dat,zero.based=T)
+	{
+		offset = 0
+		if(zero.based)
+			offset = -1
+		
+		for(ii in seq(ncol(dat)))
+		{
+			dat[,ii] = as.integer(dat[,ii])+offset
+		}
+		return(dat)
+	}
+	
+	# generate state labels:
+	make.state.labels <- function(dat)
+	{
+		cnames = colnames(dat)
+		outlabs = character(ncol(dat))
+		for(ii in seq(ncol(dat)))
+		{
+			# order by
+			snames = unique(as.character(dat[,ii])[order(as.integer(dat[,ii]))])
+			outlabs[ii] = sprintf("%d %s / %s",ii,cnames[ii],paste(snames,collapse=" "))
+		}
+		
+		return(outlabs)
+	}
+	
+	
+	if(!is.data.frame(xdf))
+		stop("Internal function .write.characters.block needs a data.frame as the first argument")
+	
+	header = paste("BEGIN ",blockname,";",sep="")
+	header.title = paste("TITLE ",blockname,"_matrix;",sep="")
+	header.dims = sprintf("DIMENSIONS NTAX=%d NCHAR=%d;",nrow(xdf),ncol(xdf))
+	header.format = sprintf("FORMAT DATATYPE=%s MISSING=%s",ifelse(dtype==contData(),"CONTINUOUS","STANDARD"),missing.char)   # TODO: add GAP, SYMBOLS 
+	if(dtype == discData()){
+		# This check is any of the levels are NOT integers
+		# if they are integers, then it is assumed that they do not 
+		# need to be writen as state labels
+		#
+		use.state.labels = any(is.na(as.integer(levels(xdf[,1]))))
+		if(use.state.labels){
+			state.labels = make.state.labels(xdf)
+			xdf = convert.to.int(xdf) # this does the zero-based conversion
+		}
+		header.format = sprintf("%s SYMBOLS=\"%s\";",header.format,paste(discover.symbols(xdf),collapse=" "))
+	} else {
+		header.format = paste(header.format,";",sep="")
+	}
+	
+	if(use.state.labels){
+		header.labels = sprintf("CHARSTATELABELS\n\t%s;", paste(state.labels,collapse=","))
+	}else{
+		header.labels = sprintf("CHARSTATELABELS\n\t%s;", paste(paste(seq(ncol(xdf)),colnames(xdf)),collapse=","))
+	}
+
+	mmatrix = "MATRIX"
+	#mmatrix.data = unname(cbind(rownames(xdf),apply(xdf,2,as.character)))
+	if(dtype==contData()){
+		mmatrix.data = apply(xdf,1:2,function(i) sprintf("%0.15f",i))
+	} else {
+		mmatrix.data = apply(xdf,2,as.character)
+	}
+	if(any(is.na(mmatrix.data)))
+		mmatrix.data[which(is.na(mmatrix.data),T)] <- missing.char
+	
+	mmatrix.data = apply(mmatrix.data,1,paste,collapse=" ")
+	mmatrix.data = unname(cbind(rownames(xdf),mmatrix.data))
+	mmatrix.data = unname(apply(mmatrix.data,1,paste,collapse="\t"))
+	mmatrix.end = ";\n\nEND;"
+	
+
+	return(c(header,
+			header.title,
+			header.dims,
+			header.format,
+			header.labels,
+			mmatrix,
+			mmatrix.data,
+			mmatrix.end))
+
+}
 

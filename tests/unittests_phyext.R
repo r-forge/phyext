@@ -159,5 +159,15 @@ test6.trees = phyext(test6.trees)
 
 ##
 
+## test block 7
+test7.fname = "((1:{0,0.013868281},2:{0,0.014628808})lyc.pim:{0,0.093605},3:{0,0.08196174},4:{1,0.0978061619286:1,9.780714e-07});"
+##
+
+## test buffer:
+capture.output(write.tree(unroot(rtree(50)),file=stdout()))
+
+
+
+
 
 
