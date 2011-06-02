@@ -32,7 +32,7 @@ cmptrees <- function(t1,t2,extended=TRUE)
 	}
 	
 	# Not sure if this will always be case:	
-	if(rootNode(t1) != rootNode(t2)) {
+	if( isRooted(t1) && (rootNode(t1) != rootNode(t2))) {
 		warning("rootNode don't match")
 		retval = FALSE
 	}

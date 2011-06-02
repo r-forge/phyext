@@ -156,12 +156,71 @@ test6.fname="parrot.nex"
 test6.trees = read.nexus.simmap(test6.fname)
 stopifnot(length(test6.trees) == 10)
 test6.trees = phyext(test6.trees)
+write.nexus.simmap(test6.trees,file="parrot.nex.tmp",dtype=contData())
+test6.reread = read.nexus.simmap("parrot.nex.tmp")
 
+for(ii in seq(length(test6.trees))){
+	cat("testing tree number ",ii)
+	stopifnot(cmptrees(test6.reread[[ii]],test6.trees[[ii]]))
+	cat("...done\n")
+}
 ##
+
 
 ## test block 7
-test7.fname = "((1:{0,0.013868281},2:{0,0.014628808})lyc.pim:{0,0.093605},3:{0,0.08196174},4:{1,0.0978061619286:1,9.780714e-07});"
+test7.fname="non_pen_501_1000.nex"
+test7.trees = read.nexus.simmap(test7.fname)
+stopifnot(length(test7.trees) == 2)
+test7.trees = phyext(test7.trees)
+write.nexus.simmap(test7.trees,file="non_pen_501_1000.nex.tmp")
+test7.reread = read.nexus.simmap("non_pen_501_1000.nex.tmp")
+
+for(ii in seq(length(test7.trees))){
+	cat("testing tree number ",ii)
+	stopifnot(cmptrees(test7.reread[[ii]],test7.trees[[ii]]))
+	cat("...done\n")
+}
 ##
+
+
+## test block 8
+test8.fname="non_rvg_501_1000.nex"
+test8.trees = read.nexus.simmap(test8.fname)
+stopifnot(length(test8.trees) == 3)
+test8.trees = phyext(test8.trees)
+write.nexus.simmap(test8.trees,file="non_rvg_501_1000.nex.tmp",dtype=contData())
+test8.reread = read.nexus.simmap("non_rvg_501_1000.nex.tmp")
+
+for(ii in seq(length(test8.trees))){
+	cat("testing tree number ",ii)
+	stopifnot(cmptrees(test8.reread[[ii]],test8.trees[[ii]]))
+	cat("...done\n")
+}
+##
+
+
+## test block 9 - unrooted
+test9.text = "((1:{0,0.013868281},2:{0,0.014628808})lyc.pim:{0,0.093605},3:{0,0.08196174},4:{1,0.0978061619286:1,9.780714e-07});"
+test9.trees = read.simmap(text=test9.text,add.root=FALSE)
+stopifnot(length(test9.trees) == 1)
+test9.trees = phyext(test9.trees)
+write.nexus.simmap(test9.trees,file="test09.nex.tmp")
+test9.reread = read.nexus.simmap("test09.nex.tmp")
+stopifnot(cmptrees(test9.reread[[1]],test9.trees))
+##
+
+
+## test block 10 - unrooted
+test10.text = "((1:[&simmap_state={0}]0.013868281,2:[&simmap_state={0}]0.014628808)lyc.pim:[&simmap_state={0}]0.093605,3:[&simmap_state={0}]0.08196174,4:[&simmap_state={1,0.0978061619286,1}]0.09780714);"
+test10.trees = read.simmap.new(text=test10.text,add.root=FALSE)
+stopifnot(length(test10.trees) == 1)
+test10.trees = phyext(test10.trees)
+write.nexus.simmap(test10.trees,file="test10.nex.tmp")
+test10.reread = read.nexus.simmap("test10.nex.tmp")
+stopifnot(cmptrees(test10.reread[[1]],test10.trees))
+##
+
+
 
 ## test buffer:
 capture.output(write.tree(unroot(rtree(50)),file=stdout()))

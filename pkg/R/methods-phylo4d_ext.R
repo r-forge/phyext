@@ -176,8 +176,12 @@ is.simmap <- function(finput="",text=NULL,vers=c(1.1),quick=TRUE)
 # Assume that the root node can only have one simmap state (or, only use the first)
 #
 # @param as.num - convert the data to numeric (by default, a factor data type is used)
-# 
-read.simmap <- function(file="",text=NULL, vers=1.1, as.num=FALSE, ...)
+# @param text - use text string instead of a file name
+# @param vers - which version of simmap to use
+# @param as.num - no idea
+# @param add.root - should the tree be treated as unrooted?
+#
+read.simmap <- function(file="",text=NULL, vers=1.1, as.num=FALSE, add.root=TRUE, ...)
 {
 	
 	if(is.null(text))
@@ -207,7 +211,7 @@ read.simmap <- function(file="",text=NULL, vers=1.1, as.num=FALSE, ...)
 		}
 			
 		# Root
-		if(regexpr(");",text)[1] != -1)
+		if(add.root && regexpr(");",text)[1] != -1)
 			text = sub( ");", ")Root:0;" , text)
 		
 	}
@@ -373,7 +377,7 @@ strip<-function(str,left=TRUE,right=TRUE)
 #		 vector data.  By default, all variable are considered to be in the special
 #		 format.
 #
-read.simmap.new <- function(file="",text=NULL, specialpatt=character(0))
+read.simmap.new <- function(file="",text=NULL, specialpatt=character(0), add.root=TRUE)
 {
 	
 	str.has <- function(patt,token,lowercase=T){
@@ -436,7 +440,7 @@ read.simmap.new <- function(file="",text=NULL, specialpatt=character(0))
 	# when processing the comments (check if anc == root).
 	#
 	norootval=FALSE
-	if(regexpr(");",textstr)[1] != -1){
+	if(add.root && regexpr(");",textstr)[1] != -1){
 		textstr = sub( ");", ")Root:0;" , textstr)
 		norootval=TRUE
 	}
@@ -535,7 +539,11 @@ read.simmap.new <- function(file="",text=NULL, specialpatt=character(0))
 					
 					desc = unname(which(labels(phy)==nodenames[kk]))
 					# check if desc is the root node (if it is then the ancestor is node 0 per phylobase's standard, I think).
-					anc = ifelse(rootNode(phy) == desc,0,unname(ancestor(phy,desc)))
+					if(isRooted(phy)){
+						anc = ifelse(rootNode(phy) == desc ,0 ,unname(ancestor(phy,desc)))
+					} else {
+						anc = unname(ancestor(phy,desc))
+					}
 					eind = .edge.index(phy,anc,desc)
 					elen = unname(edgeLength(phy)[eind])
 	
@@ -620,7 +628,11 @@ read.simmap.new <- function(file="",text=NULL, specialpatt=character(0))
 
 	###
 	# Combine processed tree and processed comments:
-	phyd = addData(phy,all.data=phy.data,match.data=TRUE,rownamesAsLabels=TRUE)
+	if(isRooted(phy)){
+		phyd = addData(phy,all.data=phy.data,match.data=TRUE,rownamesAsLabels=TRUE)
+	} else {
+		phyd = addData(phy,all.data=phy.data,match.data=TRUE,rownamesAsLabels=TRUE,missing.data="OK")
+	}
 	
 	if(length(subnode.data)!=0){
 		# add subnode stuff:
@@ -656,17 +668,16 @@ read.simmap.new <- function(file="",text=NULL, specialpatt=character(0))
 # readNexus should be used instead.
 #
 # note: if type=="all", data is read in from the "characters" block
-#						and it's rownames are assumed to match the taxa names.
+#		and it's rownames are assumed to match the taxa names.
 #
-read.nexus.simmap <- function(finput="",text=NULL,vers=NULL,type=c("all", "tree"),...)
+read.nexus.simmap <- function(finput="", text=NULL, vers=NULL, type=c("all", "tree"),...)
 {
 	
 	type <- match.arg(type)
 
 	if (type == "all") {
 		returnData <- TRUE
-	}
-	else {
+	} else {
 		returnData <- FALSE
 	}
 
@@ -739,17 +750,19 @@ read.nexus.simmap <- function(finput="",text=NULL,vers=NULL,type=c("all", "tree"
 		#tmpstr = sub("^tree.+?=(.+)$","\\1",tmpstr)
 		#tmpstr = sub("^tree(.+?)=\\s{0,}\\[(.*?)\\](.+)$","\\3",tmpstr)
 		#tmpstr = sub("^tree(.+?)=(.*?)(\\(.+)$","\\3",tmpstr)
+		roottype = sub("^(TREE|tree)(.+?)=(.*?)(\\(.+)$","\\3",tmpstr)
+		roottype = gsub("\\s","",roottype)
 		tmpstr = sub("^(TREE|tree)(.+?)=(.*?)(\\(.+)$","\\4",tmpstr)
-
 		
+		addroot = !grepl("&U",roottype)
 		# check for simmap style
 		# remove first comment (should others be removed?
 		if(is.simmap(text=tmpstr)){
-			trtmp = phyext(unname(read.simmap(text=tmpstr)))
+			trtmp = phyext(unname(read.simmap(text=tmpstr,add.root=addroot)))
 		} else if (is.simmap(text=tmpstr,vers=1.5)) {
-			trtmp = phyext(unname(read.simmap.new(text=tmpstr,...)))
+			trtmp = phyext(unname(read.simmap.new(text=tmpstr,add.root=addroot,...)))
 		} else if (is.simmap(text=tmpstr,vers=1.0)){
-			trtmp = phyext(unname(read.simmap(text=tmpstr,vers=1.0)))
+			trtmp = phyext(unname(read.simmap(text=tmpstr,vers=1.0,add.root=addroot)))
 		} else {
 			trtmp = phyext(read.tree(text=tmpstr))
 		}
@@ -966,7 +979,11 @@ collapse.singletons <- function(phy)
 			# hack it for now:
 			rettree = as(rettree,"phylo") # convert to ape
 			rettree <- collapse.singles(rettree) # collapse singles
-			rettree = phylo4d(rettree,all.data=newdata,rownamesAsLabels=TRUE) # create new phylo4d object
+			if(is.rooted(rettree)) {
+				rettree = phylo4d(rettree,all.data=newdata,rownamesAsLabels=TRUE) # create new phylo4d object
+			} else {
+				rettree = phylo4d(rettree,all.data=newdata,rownamesAsLabels=TRUE,missing.data="OK") # 
+			}
 		} else {
 			rettree = as(rettree,"phylo") # convert to ape
 			rettree <- collapse.singles(rettree) # collapse singles
@@ -1154,6 +1171,7 @@ newlabels.v1x <- function(x,usestate,splitchar,write.nas=TRUE)
 	return(newlab)
 }
 
+
 # subroutine of write.simmap:
 newlabels.v15 <- function(x,usestate,splitchar)
 {
@@ -1166,6 +1184,7 @@ newlabels.v15 <- function(x,usestate,splitchar)
 			usestate = colnames(tdata(x))[usestate]
 		}
 	}
+	
 	# get tip and subnode data:
 	tdat = tdata(x)[,usestate,drop=F]
 	snodes.present = hasSubNodes(x)
@@ -1177,6 +1196,9 @@ newlabels.v15 <- function(x,usestate,splitchar)
 	}
 	
 	es = edges(x)[,2]
+	if(!isRooted(x))
+		es = union(es,edges(x)[,1])  # added 3/8 to accomodate unrooted trees:
+
 	elens = edgeLength(x); elens[is.na(elens)] <- 0.0
 	newlenlab=character(length(es)) # new "length" labels for each node
 	
@@ -1187,20 +1209,22 @@ newlabels.v15 <- function(x,usestate,splitchar)
 		
 		if(!(ii %in% snedges.inds))
 		{ # if there is no subnode on this branch:
-		
-			topper = "[&"
-			backer = paste("]",elens[ii],sep="")
-			middle = ""
-			for(colind in seq(length(usestate)))
-				if(!is.na(tdat[nodeid,usestate[colind]]))
-					middle = paste(middle,sprintf("%s={%s}%s",usestate[colind],tdat[nodeid,usestate[colind]],ifelse(colind==length(usestate),"",",")),sep="")
+			if(is.na(elens[ii])) {
+				newlenlab[ii] = ""  # added to deal with unrooted trees
+			} else {		
+				topper = "[&"
+				backer = paste("]",elens[ii],sep="")
+				middle = ""
+				for(colind in seq(length(usestate)))
+					if(!is.na(tdat[nodeid,usestate[colind]]))
+						middle = paste(middle,sprintf("%s={%s}%s",usestate[colind],tdat[nodeid,usestate[colind]],ifelse(colind==length(usestate),"",",")),sep="")
 			
-			if(middle==""){
-				newlenlab[ii] = as.character(elens[ii])
-			} else {
-				newlenlab[ii] = paste(topper,middle,backer,sep="")
+				if(middle==""){
+					newlenlab[ii] = as.character(elens[ii])
+				} else {
+					newlenlab[ii] = paste(topper,middle,backer,sep="")
+				}
 			}
-			
 		} else {
 			
 			topper = "[&"
@@ -1401,15 +1425,14 @@ write.simmap.new <- function(x,usestate=NULL,file="",...)
 # @param translate should the tree names be moved to a special section
 # @param vers which SIMMAP version should be used (can be vers=c(1.1, 1.0, 1.5))
 # @param usestates if NULL, then all data columns are used
+# @param dtype for compatibility with older simmap versions
+#  	   anything in 'usestate' will be written into simmap comments
+#	   anything left over that is compatible with dtype will be written as 
+#	   a character.
+#				
 #
 write.nexus.simmap <- function(obj, file = "", translate = TRUE, dtype=c(noneData(),contData(),discData()), ...)
 {
-
-	dtype = match.arg(dtype)
-	dat = NULL
-	if(hasData(obj[[1]]))
-		dat = tdata(obj[[1]],"tip")
-
 	
 	if(!is.list(obj))
 	{
@@ -1422,6 +1445,11 @@ write.nexus.simmap <- function(obj, file = "", translate = TRUE, dtype=c(noneDat
 			stop("This function is only made to work with phylo4d_ext objects or lists of such. Use write.nexus() instead.")
 	}
 	ntree <- length(obj)
+
+	dtype = match.arg(dtype)
+	dat = NULL
+	if(hasData(obj[[1]]))
+		dat = tdata(obj[[1]],"tip")
 	
     cat("#NEXUS\n", file = file)
     cat(paste("[R-package APE, ", date(), "]\n\n", sep = ""),file = file, append = TRUE)
@@ -1484,7 +1512,7 @@ write.nexus.simmap <- function(obj, file = "", translate = TRUE, dtype=c(noneDat
     cat("END;\n", file = file, append = TRUE)
 
 	
-	# write data too:
+	# begin characters block write:
 	if( dtype != noneData() && !is.null(dat) )
 	{
 		datnames = colnames(dat)
@@ -1512,6 +1540,8 @@ write.nexus.simmap <- function(obj, file = "", translate = TRUE, dtype=c(noneDat
 			warning("Could not find any suitable data to write.")
 		}
 	}
+ 	# end characters block write
+
 	
 }
 
