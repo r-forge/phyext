@@ -3,8 +3,8 @@ Type: Package
 Title: An extension of some of the classes in phylobase.  Tree objects now support subnodes on branches
 Version: 0.0.1
 Date: 2011-01-26
-Author: J. Conrad Stack <stack@psu.edu>
-Maintainer: J. Conrad Stack <stack@psu.edu>
+Author: J. Conrad Stack <conrad.stack@gmail.com>
+Maintainer: J. Conrad Stack <conrad.stack@gmail.com>
 Depends: methods, phylobase (>= 0.6.2), ape (>= 2.5)
 Enhances: phylobase
 Description: This package enhancements to phylobase classes.  It provides classes and methods which help uses manipulate branch-annotated trees and provides supports for a few other extra features.
